@@ -75,15 +75,15 @@ function Sets.GetActiveArmorSet(owner, item)
 	return other ~= nil and other ~= item and Sets.PIECES[other.prefab] == set and set or nil
 end
 
--- prefabs/hats.lua voidcloth set bonus: each hit adds planar damage to an equipped shadow weapon
--- with planar damage, up to ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_MAX. Returns that maximum.
+-- prefabs/hats.lua voidcloth_onequip -> voidcloth_setbuffowner: wearing the Void Cowl alone (no full set
+-- needed) makes each hit add planar damage to an equipped shadow weapon with planar damage, up to
+-- ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_MAX. Returns that maximum.
 function Sets.GetVoidclothRamp(owner, item)
 	if not item:HasTag("shadow_item") then
 		return 0
 	end
 	local hat = GetEquipped(owner, EQUIPSLOTS.HEAD)
-	local body = GetEquipped(owner, EQUIPSLOTS.BODY)
-	if hat == nil or body == nil or Sets.PIECES[hat.prefab] ~= "voidcloth" or Sets.PIECES[body.prefab] ~= "voidcloth" then
+	if hat == nil or hat.prefab ~= "voidclothhat" then
 		return 0
 	end
 	return TUNING.ARMOR_VOIDCLOTH_SETBONUS_PLANARDAMAGE_MAX or 0

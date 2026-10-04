@@ -975,7 +975,7 @@ local function AddWeaponRow(rows, item, data, owner)
 		planar_bonus = planar_bonus + Stats.GetWolfgangPlanarBonus(owner, item)
 		local planar = data.planardamage + planar_bonus
 		local text = FormatNumber(planar)
-		-- Full Void set: every hit adds planar damage to shadow weapons, up to 6 hits (prefabs/hats.lua)
+		-- Void Cowl: every hit adds planar damage to shadow weapons, up to 6 hits (prefabs/hats.lua)
 		local ramp = Sets.GetVoidclothRamp(owner, item)
 		if ramp > 0 then
 			text = text.."-"..FormatNumber(planar + ramp)
