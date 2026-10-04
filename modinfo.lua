@@ -10,25 +10,25 @@ end
 name = T("Item Info Reworked", "物品信息 重制版 (Item Info Reworked)")
 description = T([[Version 2.0.0
 
-Shows item stats when hovering over inventory, equipment and container slots, plus a panel with your equipped items' stats.
+Displays detailed item statistics when hovering over inventory, equipment and container slots, together with a compact panel summarizing your equipped gear.
 
-Food: hunger, sanity, health for YOUR character (stale/spoiled food, spices, favorite foods with a star, character diets), warming/cooling food.
-Spoilage: freshness, time until stale and until rotten, including fridges, Polar Bearger Bin, salt box, fish box, seed pouch, mushroom lights, frozen items and season effects.
-Combat: damage with character multipliers, planar damage/defense with lunar/shadow icons, bonus damage vs an alignment, set bonuses and skill tree perks, slingshot ammo, Wortox's knapsack.
-Clothing: sanity/min, movement speed, insulation, waterproofing.
-Durability: uses left, fuel time, armor durability, thermal stone uses and temperature, health of bumpers, walls and boats once placed.
+• Food: hunger, sanity and health calculated for your character, accounting for freshness, spices, favorite foods and dietary restrictions.
+• Spoilage: freshness and time until stale and rotten, adjusted for containers, frozen items, wetness and season.
+• Combat: damage including character multipliers, set bonuses and skill tree perks, planar damage and defense, and bonuses against lunar and shadow creatures.
+• Clothing: sanity per minute, movement speed, insulation and waterproofing.
+• Durability: remaining uses, fuel and wear time, and the health of placeable structures such as walls, bumpers and boats.
 
-Client only, works on any server. A hotkey can toggle the mod in game.]], [[版本 2.0.0
+Client-side only and compatible with any server. Fully configurable, including an optional hotkey to toggle the display (set it under "Toggle key" in the mod settings).]], [[版本 2.0.0
 
-鼠标悬停在物品栏、装备栏和容器格子上时显示物品属性，并在屏幕右下角显示已装备物品的属性。
+鼠标悬停在物品栏、装备栏和容器格子上时显示详细的物品属性，并以简洁的面板汇总你当前的装备。
 
-食物：按你的角色计算的饥饿、理智、生命（新鲜度、调味料、带星标的最爱食物、角色饮食规则），以及升温/降温食物。
-腐烂：新鲜度、变质时间与腐烂时间，支持冰箱、极地熊獾桶、盐盒、鱼箱、种子袋、蘑菇灯、冷冻物品和季节影响。
-战斗：含角色倍率的伤害、带月亮/暗影图标的位面伤害/位面防御、对阵营的额外伤害、套装加成和技能树加成、弹弓弹药、沃拓克斯的掠夺袋。
-衣物：每分钟理智、移动速度、保暖/隔热、防水。
-耐久：剩余次数、燃料时间、护甲耐久、暖石次数与温度，以及保险杠、墙和船放置后的生命值。
+• 食物：根据你的角色计算饥饿、理智与生命值，考虑新鲜度、调味料、最爱食物及饮食限制。
+• 腐烂：新鲜度、变质及腐烂时间，并根据容器、冷冻物品、潮湿状态和季节进行调整。
+• 战斗：包含角色倍率、套装加成与技能树加成的伤害，位面伤害与位面防御，以及对月亮/暗影生物的额外伤害。
+• 衣物：每分钟理智、移动速度、保暖/隔热及防水。
+• 耐久：剩余次数、燃料与穿戴时间，以及墙、保险杠和船等可放置建筑的生命值。
 
-纯客户端模组，可在任何服务器使用。游戏中可用快捷键开关。]])
+纯客户端模组，兼容任何服务器。所有选项均可配置，并可在模组设置的“开关快捷键”中设置用于开关显示的按键。]])
 author = "Alti"
 version = "2.0.0"
 icon_atlas = "item_info.xml"
