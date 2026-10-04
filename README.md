@@ -1,37 +1,39 @@
-# Item Info Updated by Alti
+<p align="center"><img src="docs/icon.png" width="160" alt="Item Info Reworked"></p>
 
-## Overview
-**Item Info Updated** is a **client mod** that enhances item tooltips with useful stats and details. Since it's a client-side modification, it can be used on any server without issues.
+# Item Info Reworked by Alti
 
-This mod is based on the modified version of **Item Info by 無名** ([Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=2972499450)), which itself is derived from **Item Info by Ryuu** ([Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=836583293)).
+**Item Info Reworked** (v2.0.0) is a **client-only** Don't Starve Together mod that shows item stats when you hover over inventory, equipment and container slots, plus a panel in the bottom right corner with your equipped items' stats. Because it's client-side, it works on any server.
 
+Version 2.0.0 is a complete rework: every script was rewritten, all values follow the current game code, and the old bugs and crashes are fixed.
 
-## Updates
-- Fixed various crash issues.
-- Added **Wolfgang's damage multiplier** to total damage calculations.
-- Introduced **new config options**.
-- Added **support for new content**.
-- And more! (Check the patch notes for full details.)
+## What it shows
 
-## Icon Meanings
-This mod adds a variety of useful icons to item tooltips, providing quick insights into their properties:
+- **Food:** hunger, sanity and health for **your** character: stale and spoiled food, spices, favorite foods (gold value with a star), character diets (Wurt, Wigfrid, Warly, Wortox, Wormwood, Webber, WX-78, Wickerbottom), and warming/cooling food.
+- **Spoilage:** freshness, time until stale and time until rotten. Takes containers into account (Ice Box, Insulated Pack, Polar Bearger Bin, Salt Box, Fish Box, Seed Pouch, mushroom lights...), plus frozen items, wetness and seasons. The timer counts down smoothly.
+- **Combat:** damage with character multipliers (Wolfgang's mightiness, Wigfrid, Wendy, Wes, Wanda's age), planar damage and planar defense with lunar/shadow icons, bonus damage against an alignment, set bonuses (shown in green), skill tree perks (allegiance, Wolfgang's planar skills, Wigfrid's helm), slingshot ammo, and Wortox's Knapsack (live damage based on your inventory and souls).
+- **Armor:** damage absorption, durability, planar defense and reduced damage from lunar/shadow creatures (including set bonuses).
+- **Clothing:** sanity per minute (including wetness and character rules), movement speed, insulation and waterproofing.
+- **Durability:** uses left, fuel and wear time, thermal stone uses and temperature, and the health of bumpers, walls and boats once placed.
 
-- 🛡 **Armor** - Displays damage reduction for armor and helmets. If the armor has planar defense, values appear in `80%+5` format, with `+5` being the planar defense. The color changes slightly based on alignment (blue for lunar, red for shadow).
-- 🎩 **Winter Hat** - Indicates the insulation stat.
-- ❄ **Snowflake** - Displays the freshness percentage of the item.
-- 🍽 **Stomach** - Shows how much **hunger** is gained or lost when consumed.
-- ❤️ **Heart** - Shows how much **health** is gained or lost when consumed.
-- 🦠 **Rot** - Displays the **time needed for full decay**.
-- 🧠 **Brain** - Indicates the **sanity** gained or lost when consumed.
-- 🐟 **Fish** - Shows the **time needed to transition between freshness stages**.
-- 💡 **Bulb** - Displays the **remaining time** before the item stops emitting light.
-- 🔄 **Arrow** - Shows the **number of uses** left for the item.
-- 👕 **T-shirt** - Displays the **time before the item is fully destroyed**.
-- ☔ **Umbrella** - Indicates the **item’s rainproof stat**.
-- 🧊 **Ice Cube** - Shows how long the item can keep **cold**.
-- ⚔ **Weapon** - Displays the **damage the weapon can deal**. The color changes slightly based on alignment (blue for lunar, red for shadow).
+Low durability (20% or less) is shown in red.
 
-## Installation & Usage
-1. Subscribe to the mod on **Steam Workshop**: [Item Info Updated](https://steamcommunity.com/sharedfiles/filedetails/?id=3118627881)
-2. Enable it in the **Don't Starve Together** client mod menu.
-3. Configure the mod settings to your preference.
+## Highlights of 2.0.0
+
+- Fixed the info getting stuck on screen when swapping a backpack for armor, and the memory leak behind it.
+- Fixed crashes (merm tools, gloomerang, Brightshade at 0%, spitter spiders, modded items with missing values). Errors can no longer crash the game.
+- When you host a world, values come straight from the game itself, so new characters, skills and balance changes are covered automatically.
+- Tooltips sit above the game's own item text, and beside chests instead of covering them.
+- Better performance: one shared tooltip, and the info is only rebuilt when a value changes.
+- Settings in English and Simplified Chinese, a toggle hotkey, background opacity, per-category on/off, and support for extra equip-slot mods.
+
+## Installation & usage
+
+1. Subscribe to the mod on the [Steam Workshop](https://steamcommunity.com/sharedfiles/filedetails/?id=3118627881).
+2. Enable it in the Don't Starve Together **Mods** menu.
+3. Configure the settings to your liking.
+
+The mod turns itself off on servers running Insight or Show Me if you set **Use with Insight / Show Me** to *No*.
+
+## Reporting bugs
+
+If something looks wrong, check `Documents\Klei\DoNotStarveTogether\client_log.txt` for lines starting with `[Item Info Reworked]` and include them in your report, together with what you were doing.

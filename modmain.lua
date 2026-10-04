@@ -1,264 +1,133 @@
-local DST = GLOBAL.TheSim:GetGameID() == "DST"
-if not DST then return end
-if DST and GLOBAL.TheNet:IsDedicated() then return end
+local _G = GLOBAL
 
-local require = GLOBAL.require
-local CacheItem = require("iteminfo_cacheitem")
-local Image = require("widgets/image")
-local ItemInfoDesc = require("widgets/iteminfo_desc")
-local ItemInfoEquip = require("widgets/iteminfo_equip")
-local ItemInfoEquipManager = require("widgets/iteminfo_equip_manager")
-local EntityScript = require("entityscript")
+-- Pure UI mod: nothing to do on dedicated servers
+if _G.TheNet:IsDedicated() then
+	return
+end
 
-GLOBAL.MOD_ITEMINFO = {}
+local function Config(name, default)
+	local value = GetModConfigData(name)
+	if value == nil then
+		return default
+	end
+	return value
+end
 
-GLOBAL.MOD_ITEMINFO.SHOW_PREFABNAME = GetModConfigData("SHOW_PREFABNAME")
-GLOBAL.MOD_ITEMINFO.SHOW_BACKGROUND = GetModConfigData("SHOW_BACKGROUND")
+-- Background opacity: 0 = off. Older versions saved true / false.
+local function Opacity(name, default)
+	local value = Config(name, default)
+	if value == true then
+		return default
+	elseif type(value) ~= "number" then
+		return 0
+	end
+	return value
+end
 
-GLOBAL.MOD_ITEMINFO.WURT_MEAT = GetModConfigData("WURT_MEAT")
-GLOBAL.MOD_ITEMINFO.WIG_VEGGIE = GetModConfigData("WIG_VEGGIE")
-GLOBAL.MOD_ITEMINFO.WORM_HEALTH = GetModConfigData("WORM_HEALTH")
+--------------------------------------------------------------------------
+-- Turn off next to Insight / Show Me when the player asked for it
 
-GLOBAL.MOD_ITEMINFO.INFO_SCALE = GetModConfigData("INFO_SCALE")
-GLOBAL.MOD_ITEMINFO.EQUIP_SCALE = GetModConfigData("EQUIP_SCALE")
+if not Config("ENABLER", true) then
+	local CONFLICTING_MODS =
+	{
+		"workshop-2189004162", -- Insight
+		"workshop-666155465",  -- Show Me (Origin)
+		"workshop-2287303119", -- Show Me (中文)
+	}
 
-GLOBAL.MOD_ITEMINFO.PERISHABLE = GetModConfigData("PERISHABLE")
-GLOBAL.MOD_ITEMINFO.PERISH_DISPLAY = {PERISH_ONLY = 0, STALE_PERISH = 1, BOTH = 2, NONE = 3}
+	local enabled_mods = {}
+	for _, modname in ipairs(_G.KnownModIndex:GetModsToLoad() or {}) do
+		enabled_mods[modname] = true
+	end
+	for _, modname in ipairs(CONFLICTING_MODS) do
+		if enabled_mods[modname] or _G.KnownModIndex:IsModEnabled(modname) then
+			print("[Item Info Reworked] "..modname.." is enabled, Item Info Reworked is turned off (see the mod's settings).")
+			return
+		end
+	end
+end
 
-GLOBAL.MOD_ITEMINFO.TIME_FORMAT = GetModConfigData("TIME_FORMAT")
-GLOBAL.MOD_ITEMINFO.TIME_FORMATS = {HOURS = 0, DAYS = 1}
+local function IsChinese()
+	local ok, code = _G.pcall(function() return _G.LOC.GetLocaleCode() end)
+	return ok and (code == "zh" or code == "zhr" or code == "zht")
+end
 
-GLOBAL.MOD_ITEMINFO.SLOT_UPDATE_TIME = 0.2
-GLOBAL.MOD_ITEMINFO.EQUIP_UPDATE_TIME = 0.2
+--------------------------------------------------------------------------
+-- Settings, shared with the scripts through a single global table
 
-GLOBAL.MOD_ITEMINFO.MARGINH = GetModConfigData("HORIZONTAL_MARGIN")
-GLOBAL.MOD_ITEMINFO.MARGINV = GetModConfigData("VERTICAL_MARGIN")
+_G.ITEMINFO_UPDATED =
+{
+	enabled = true,
+	config =
+	{
+		info_scale = Config("INFO_SCALE", .8),
+		tooltip_offset = Config("TOOLTIP_OFFSET", 0),
+		tooltip_background = Opacity("TOOLTIP_BACKGROUND", .55),
+		container_tooltips = Config("CONTAINER_TOOLTIPS", true),
 
-GLOBAL.MOD_ITEMINFO.EQUIP_SPACING = 10
+		show_food = Config("SHOW_FOOD", true),
+		perish_display = Config("PERISHABLE", 2),
+		show_combat = Config("SHOW_COMBAT", true),
+		show_clothing = Config("SHOW_CLOTHING", true),
+		show_durability = Config("SHOW_DURABILITY", true),
+		show_refused_food = Config("SHOW_REFUSED_FOOD", false),
+		time_format = Config("TIME_FORMAT", 0),
+		show_prefabname = Config("SHOW_PREFABNAME", false),
 
-GLOBAL.MOD_ITEMINFO.SPAWNING_ITEM = false
+		show_hands = Config("SHOW_INFO_HANDS", true),
+		show_body = Config("SHOW_INFO_BODY", true),
+		show_head = Config("SHOW_INFO_HEAD", true),
+		equip_scale = Config("EQUIP_SCALE", .46),
+		equip_background = Opacity("SHOW_BACKGROUND", .45),
+		margin_h = Config("HORIZONTAL_MARGIN", 100),
+		margin_v = Config("VERTICAL_MARGIN", 100),
+		avoid_backpack = Config("AVOID_BACKPACK", false),
 
-
-GLOBAL.MOD_ITEMINFO.CACHED_ITEMS = {}
+		-- Simplified Chinese (zh, zhr for WeGame) and Traditional Chinese (zht)
+		chinese = IsChinese(),
+	},
+}
 
 Assets =
 {
 	Asset("ATLAS", "images/iteminfo_images.xml"),
 	Asset("IMAGE", "images/iteminfo_images.tex"),
-	
-	Asset("ATLAS", "images/iteminfo_bg.xml"),
-	Asset("IMAGE", "images/iteminfo_bg.tex"),
+
+	Asset("ATLAS", "images/iteminfo_planar.xml"),
+	Asset("IMAGE", "images/iteminfo_planar.tex"),
 }
 
-local ENABLER = GetModConfigData("ENABLER")
+local ItemInfoTooltip = _G.require("iteminfo_updated/widgets/tooltip")
+local ItemInfoEquipPanel = _G.require("iteminfo_updated/widgets/equippanel")
 
-if not ENABLER then
-
-    local CHECK_MODS = {
-        ["workshop-2189004162"] = "INSIGHT",
-        ["workshop-666155465"] = "SHOWME",
-        ["workshop-2287303119"] = "SHOWME(中文)",
-    }
-
-    local HAS_MOD = {}
-
-    -- Checks for default Host mods
-    for mod_id, mod_name in pairs(CHECK_MODS) do
-        HAS_MOD[mod_name] = HAS_MOD[mod_name] or (GLOBAL.KnownModIndex:IsModEnabled(mod_id) and mod_id)
-    end
-
-    -- Checks for Dedicated Server mods
-    for _, mod_id in pairs(GLOBAL.KnownModIndex:GetModsToLoad()) do
-        local mod_name = CHECK_MODS[mod_id]
-        if mod_name then
-            HAS_MOD[mod_name] = mod_id
-        end
-    end
-
-    if HAS_MOD.INSIGHT or HAS_MOD.SHOWME or HAS_MOD["SHOWME(中文)"] then
-        return
-    end
-
-end
-
-
-
-
-
-
-AddGlobalClassPostConstruct("entityscript","EntityScript", function(self)
-	local oldRegisterComponentActions = self.RegisterComponentActions
-	
-	self.RegisterComponentActions = function(self, name)
-		if GLOBAL.MOD_ITEMINFO.SPAWNING_ITEM then
-			return
-		end
-		
-		return oldRegisterComponentActions(self, name)
-	end
-end) 
-
-local function IsControllerEnabled()
-	return GLOBAL.TheInput.ControllerAttached()
-end
-
-local function AddItemInfo(slot)
-    if not slot.iteminfo then
-        slot.iteminfo = GLOBAL.ThePlayer.HUD.controls:AddChild(ItemInfoDesc(slot))
-
-        -- Itemslot is 64x64, anchor points = H:CENTER, V:CENTER
-        slot.iteminfo:SetPosition(0, 144, 0)
-        -- slot.iteminfo:FollowMouse()
-
-        slot.iteminfo.relative_scale = GLOBAL.MOD_ITEMINFO.INFO_SCALE
-        slot.iteminfo:Hide()
-    end
-
-    local oldOnGainFocus = slot.OnGainFocus
-    slot.OnGainFocus = function (slot)
-        if slot.tile and slot.tile.item then
-            slot.iteminfo.item = slot.tile.item
-            slot.iteminfo:ShowInfo()
-        end
-
-        slot.iteminfo:StartUpdating()
-
-        if oldOnGainFocus then return oldOnGainFocus(slot) end
-    end
-
-    local oldOnLoseFocus = slot.OnLoseFocus
-    slot.OnLoseFocus = function (slot)
-        slot.iteminfo:SetInactive()
-
-        if oldOnLoseFocus then return oldOnLoseFocus(slot) end
-    end
-end
-
-
-
-
-
-
-AddClassPostConstruct("widgets/invslot", function(invslot)
-	
-	AddItemInfo(invslot)
-	
-	local oldClick = invslot.Click
-	invslot.Click = function(invslot, stack_mod)
-		local res = oldClick(invslot, stack_mod)
-		if invslot.tile and invslot.tile.item then
-			invslot.iteminfo.item = invslot.tile.item
-			invslot.iteminfo:ShowInfo()
-			invslot.iteminfo:StartUpdating()
-		end
-		return res
-	end
-end)
-
-AddClassPostConstruct("widgets/equipslot", function(equipslot)
-	
-	AddItemInfo(equipslot)
-	
-	local oldOnControl = equipslot.OnControl
-	equipslot.OnControl = function(equipslot, control, down)
-		local res = oldOnControl(equipslot, control, down)
-		if (control == GLOBAL.CONTROL_ACCEPT or control == GLOBAL.CONTROL_SECONDARY) then
-			if equipslot.tile and equipslot.tile.item then
-				equipslot.iteminfo.item = equipslot.tile.item
-				equipslot.iteminfo:ShowInfo()
-				equipslot.iteminfo:StartUpdating()
-			end
-		end
-		return res
-	end
-end)
-
-
-
--- Controller support
-AddClassPostConstruct("widgets/inventorybar", function(self)
-	local _SelectSlot = self.SelectSlot
-	self.SelectSlot = function(self, slot)
-		if GLOBAL.TheInput:ControllerAttached() then
-			if slot and slot ~= self.active_slot then
-				
-				if self.active_slot and self.active_slot.iteminfo then
-					self.active_slot.iteminfo:SetInactive()
-				end
-				
-				if slot.iteminfo then
-					if slot.tile and slot.tile.item then
-						slot.iteminfo.item = slot.tile.item
-						slot.iteminfo:ShowInfo()
-					end
-				
-					slot.iteminfo:StartUpdating()
-				end
-			end
-		end
-		return _SelectSlot(self, slot)
-	end
-end)
-
-
-AddClassPostConstruct("widgets/containerwidget", function(self)
-	local _Open = self.Open
-	self.Open = function(self, container, doer)
-		_Open(self, container, doer)
-		for i,v in ipairs(self.inv) do
-			if v.iteminfo then v.iteminfo.container = container end
-		end
-	end
-	
-	local _Close = self.Close
-	self.Close = function(self, container, doer)
-		for i,v in ipairs(self.inv) do
-			if v.iteminfo then v.iteminfo:Kill() end
-		end
-		_Close(self, container, doer)
-	end
-end)
-
-local SHOW_INFO_HANDS = GetModConfigData("SHOW_INFO_HANDS")
-local SHOW_INFO_BODY = GetModConfigData("SHOW_INFO_BODY")
-local SHOW_INFO_HEAD = GetModConfigData("SHOW_INFO_HEAD")
-
-local EQUIP_SCALE = GLOBAL.MOD_ITEMINFO.EQUIP_SCALE
-
-local EquipInfoHeight = 175 * EQUIP_SCALE
-
-local MaxWidth = 420
-local MaxHeight = 50 * 5
-
+--------------------------------------------------------------------------
+-- HUD
 
 AddClassPostConstruct("widgets/controls", function(controls)
-
-	controls.iteminfo_equip_manager = controls.bottomright_root:AddChild(ItemInfoEquipManager(controls.bottomright_root))
-	
-	controls.iteminfo_equip_manager:SetPosition(GLOBAL.MOD_ITEMINFO.MARGINH * -1, GLOBAL.MOD_ITEMINFO.MARGINV, 0)
-	
-	local hudscale = controls.bottomright_root:GetScale()
-	controls.iteminfo_equip_manager:SetScale(EQUIP_SCALE * hudscale.x, EQUIP_SCALE * hudscale.y, EQUIP_SCALE * hudscale.z)
-	
-	
-	if SHOW_INFO_HANDS then
-		controls.iteminfo_equip_manager:AddEquip(GLOBAL.EQUIPSLOTS.HANDS)
+	-- If the widgets can't be created (e.g. another mod changed the HUD), the mod turns itself off
+	-- instead of breaking the HUD
+	local ok, err = _G.pcall(function()
+		controls.iteminfo_equippanel = controls.bottomright_root:AddChild(ItemInfoEquipPanel(controls))
+		controls.iteminfo_tooltip = controls:AddChild(ItemInfoTooltip(controls))
+	end)
+	if not ok then
+		print("[Item Info Reworked] Could not create the HUD widgets: "..tostring(err))
 	end
-	
-	if SHOW_INFO_BODY then
-		controls.iteminfo_equip_manager:AddEquip(GLOBAL.EQUIPSLOTS.BODY)
-		
-		if GLOBAL.EQUIPSLOTS.BACK then
-			controls.iteminfo_equip_manager:AddEquip(GLOBAL.EQUIPSLOTS.BACK)
-		end
-		
-		if GLOBAL.EQUIPSLOTS.NECK then
-			controls.iteminfo_equip_manager:AddEquip(GLOBAL.EQUIPSLOTS.NECK)
-		end
-	end
-	
-	if SHOW_INFO_HEAD then
-		controls.iteminfo_equip_manager:AddEquip(GLOBAL.EQUIPSLOTS.HEAD)
-	end
-	
 end)
+
+--------------------------------------------------------------------------
+-- Toggle key
+
+local toggle_key = Config("TOGGLE_KEY", false)
+local toggle_keycode = type(toggle_key) == "string" and _G.rawget(_G, toggle_key) or nil
+if toggle_keycode ~= nil then
+	_G.TheInput:AddKeyDownHandler(toggle_keycode, function()
+		local player = _G.ThePlayer
+		local screen = _G.TheFrontEnd:GetActiveScreen()
+		-- Only while playing, never while typing in chat or a menu is open
+		if player == nil or player.HUD == nil or screen ~= player.HUD then
+			return
+		end
+		_G.ITEMINFO_UPDATED.enabled = not _G.ITEMINFO_UPDATED.enabled
+	end)
+end

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Atlas>
+    <Texture filename="iteminfo_planar.tex"/>
+    <Elements>
+        <Element name="lunar.tex" u1="0.0078125" u2="0.492188" v1="0.507813" v2="0.992188"/>
+        <Element name="planar.tex" u1="0.0078125" u2="0.492188" v1="0.0078125" v2="0.492188"/>
+        <Element name="shadow.tex" u1="0.507813" u2="0.992188" v1="0.507813" v2="0.992188"/>
+    </Elements>
+    <StraightAlpha>false</StraightAlpha>
+</Atlas>
+
