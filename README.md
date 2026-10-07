@@ -12,7 +12,7 @@ Version 2.0.0 is a complete rework: every script has been rewritten against the 
 |---|---|
 | **Food** | Hunger, sanity and health calculated for your character, accounting for freshness, spices, favorite foods (highlighted with a star) and dietary restrictions. Warming and cooling foods are indicated. |
 | **Spoilage** | Freshness and time until stale and rotten, adjusted for containers (Ice Box, Insulated Pack, Polar Bearger Bin, Salt Box, Fish Box, Seed Pouch, mushroom lights), frozen items, wetness and season. |
-| **Combat** | Damage including character multipliers, set bonuses and skill tree perks; planar damage and defense with lunar and shadow indicators; bonuses against aligned creatures; slingshot ammunition and Wortox's Knapsack. |
+| **Combat** | Damage including character multipliers, set bonuses and skill tree perks; planar damage and defense with lunar and shadow indicators; bonuses against aligned creatures; slingshot ammunition and Wortox's Knabsack. |
 | **Armor** | Damage absorption, durability, planar defense and resistance to lunar and shadow creatures. |
 | **Clothing** | Sanity per minute, movement speed, insulation and waterproofing. |
 | **Durability** | Remaining uses, fuel and wear time, Thermal Stone uses and temperature, and the health of placeable structures such as walls, bumpers and boats. |
