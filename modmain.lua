@@ -60,10 +60,14 @@ _G.ITEMINFO_UPDATED =
 	enabled = true,
 	config =
 	{
+		-- "reworked" or "classic" (the look of the original mod: centered rows, no backgrounds)
+		ui_style = Config("UI_STYLE", "reworked"),
 		info_scale = Config("INFO_SCALE", .8),
 		tooltip_offset = Config("TOOLTIP_OFFSET", 0),
 		tooltip_background = Opacity("TOOLTIP_BACKGROUND", .55),
 		container_tooltips = Config("CONTAINER_TOOLTIPS", true),
+		-- Controller with the inventory closed: "always", "name" (while the game shows the item name) or "open" (never)
+		controller_tooltip = Config("CONTROLLER_TOOLTIP", "always"),
 
 		show_food = Config("SHOW_FOOD", true),
 		perish_display = Config("PERISHABLE", 2),
@@ -88,6 +92,12 @@ _G.ITEMINFO_UPDATED =
 	},
 }
 
+-- The classic style is the original look, which had no backgrounds
+if _G.ITEMINFO_UPDATED.config.ui_style == "classic" then
+	_G.ITEMINFO_UPDATED.config.tooltip_background = 0
+	_G.ITEMINFO_UPDATED.config.equip_background = 0
+end
+
 Assets =
 {
 	Asset("ATLAS", "images/iteminfo_images.xml"),
@@ -95,6 +105,9 @@ Assets =
 
 	Asset("ATLAS", "images/iteminfo_planar.xml"),
 	Asset("IMAGE", "images/iteminfo_planar.tex"),
+
+	Asset("ATLAS", "images/iteminfo_panel.xml"),
+	Asset("IMAGE", "images/iteminfo_panel.tex"),
 }
 
 local ItemInfoTooltip = _G.require("iteminfo_updated/widgets/tooltip")

@@ -142,6 +142,13 @@ end
 local perish_tracking = setmetatable({}, { __mode = "k" })
 
 local function GetPerishPercent(item, rate)
+	-- Hosts: the real component (components/perishable.lua GetPercent), no 1/62 steps to estimate between
+	local perishable = item.components ~= nil and item.components.perishable or nil
+	if perishable ~= nil and type(perishable.perishremainingtime) == "number" and type(perishable.perishtime) == "number"
+		and perishable.perishtime > 0 then
+		return math.clamp(perishable.perishremainingtime / perishable.perishtime, 0, 1)
+	end
+
 	local classified = GetClassified(item)
 	local value = classified ~= nil and classified.perish ~= nil and classified.perish:value() or 63
 	if value == 63 then
@@ -566,6 +573,11 @@ local function IsSkillActivated(owner, skill)
 	return ok and activated == true
 end
 
+-- TUNING.SKILLS value, nil when the game (or a mod) doesn't define it
+local function SkillTuning(name)
+	return TUNING.SKILLS ~= nil and TUNING.SKILLS[name] or nil
+end
+
 local function GetMightiness(owner)
 	local classified = owner.player_classified
 	return classified ~= nil and classified.currentmightiness ~= nil and classified.currentmightiness:value() or nil
@@ -591,12 +603,12 @@ function Stats.GetAllegianceBonus(owner)
 	local bonuses = nil
 	local function Add(vs_tag, side)
 		local vs = vs_tag == "lunar_aligned" and "LUNAR" or "SHADOW"
-		local mult = (TUNING.SKILLS or {})["WILSON_ALLEGIANCE_VS_"..vs.."_BONUS"] or 1.1
+		local mult = SkillTuning("WILSON_ALLEGIANCE_VS_"..vs.."_BONUS") or 1.1
 		if owner.prefab == "wolfgang" then
-			mult = (TUNING.SKILLS or {})["WOLFGANG_ALLEGIANCE_VS_"..vs.."_BONUS_1"] or mult
+			mult = SkillTuning("WOLFGANG_ALLEGIANCE_VS_"..vs.."_BONUS_1") or mult
 			for tier = 2, 3 do
 				if IsSkillActivated(owner, "wolfgang_allegiance_"..side.."_"..tier) then
-					mult = mult * ((TUNING.SKILLS or {})["WOLFGANG_ALLEGIANCE_VS_"..vs.."_BONUS_"..tier] or 1)
+					mult = mult * (SkillTuning("WOLFGANG_ALLEGIANCE_VS_"..vs.."_BONUS_"..tier) or 1)
 				end
 			end
 		end
@@ -624,7 +636,7 @@ function Stats.GetWolfgangPlanarBonus(owner, item)
 	local bonus = 0
 	for i = 1, 5 do
 		if IsSkillActivated(owner, "wolfgang_planardamage_"..i) then
-			bonus = bonus + ((TUNING.SKILLS or {})["WOLFGANG_PLANARDAMAGE_"..i] or 0)
+			bonus = bonus + (SkillTuning("WOLFGANG_PLANARDAMAGE_"..i) or 0)
 		end
 	end
 	return bonus
@@ -633,7 +645,7 @@ end
 -- prefabs/hats.lua wathgrithr_refreshattunedskills: Wigfrid's improved helm gains planar defense
 function Stats.GetSkillPlanarDefense(owner, item)
 	if owner.prefab == "wathgrithr" and item.prefab == "wathgrithr_improvedhat" and IsSkillActivated(owner, "wathgrithr_arsenal_helmet_4") then
-		local wathgrithr = TUNING.SKILLS ~= nil and TUNING.SKILLS.WATHGRITHR or nil
+		local wathgrithr = SkillTuning("WATHGRITHR")
 		return wathgrithr ~= nil and wathgrithr.HELM_PLANAR_DEF or 0
 	end
 	return 0
@@ -663,8 +675,7 @@ function Stats.GetDamageMultiplier(owner, item)
 	elseif prefab == "wes" then
 		return TUNING.WES_DAMAGE_MULT
 	elseif prefab == "wolfgang" then
-		local classified = owner.player_classified
-		local value = classified ~= nil and classified.currentmightiness ~= nil and classified.currentmightiness:value() or nil
+		local value = GetMightiness(owner)
 		if value == nil then
 			return 1
 		elseif value >= TUNING.MIGHTY_THRESHOLD then
@@ -691,7 +702,7 @@ end
 -- and with the wortox_souljar_3 skill, with the souls carried (stacks, soul jars, cursor item).
 -- Returns damage and whether the soul bonus is part of it.
 local function GetNabbagDamage(owner)
-	local wortox = TUNING.SKILLS ~= nil and TUNING.SKILLS.WORTOX or nil
+	local wortox = SkillTuning("WORTOX")
 	local inventory = owner.replica.inventory
 	if wortox == nil or wortox.NABBAG_DAMAGE_MIN == nil or wortox.NABBAG_DAMAGE_MAX == nil or inventory == nil then
 		return nil
@@ -849,7 +860,9 @@ end
 --------------------------------------------------------------------------
 -- Row builders
 
-local function AddFoodRows(rows, item, data, owner)
+-- What eating the item does for this character, or nil when it's not shown.
+-- Returns { hunger, sanity, health, favorite, refused }
+local function ComputeFood(item, data, owner)
 	-- Wortox souls aren't food, they're eaten by the souleater component (prefabs/wortox.lua OnEatSoul)
 	if item:HasTag("soul") and owner:HasTag("souleater") then
 		local sanity = -TUNING.SANITY_TINY
@@ -858,12 +871,7 @@ local function AddFoodRows(rows, item, data, owner)
 		elseif owner.wortox_inclination == "naughty" then
 			sanity = 0
 		end
-		local row = { Cell(ICONS.hunger, FormatNumber(TUNING.CALORIES_MED)) }
-		if sanity ~= 0 then
-			table.insert(row, Cell(ICONS.sanity, FormatNumber(sanity), COLOUR_NEGATIVE))
-		end
-		table.insert(rows, row)
-		return
+		return { hunger = TUNING.CALORIES_MED, sanity = sanity, health = 0, favorite = false, refused = false }
 	end
 
 	local edible = data.edible
@@ -876,15 +884,25 @@ local function AddFoodRows(rows, item, data, owner)
 		refused = can_eat and not PrefersToEat(owner, item)
 	end
 	if not can_eat or (refused and not CFG.show_refused_food) then
-		return
+		return nil
 	end
 
-	local hunger, sanity, health, favorite
+	local food = { refused = refused }
 	if live ~= nil then
-		hunger, sanity, health, favorite = live.hunger, live.sanity, live.health, live.favorite
+		food.hunger, food.sanity, food.health, food.favorite = live.hunger, live.sanity, live.health, live.favorite
 	else
-		hunger, sanity, health, favorite = Stats.GetFoodValues(item, edible, owner)
+		food.hunger, food.sanity, food.health, food.favorite = Stats.GetFoodValues(item, edible, owner)
 	end
+	return food
+end
+
+local function AddFoodRows(rows, item, data, owner)
+	local food = ComputeFood(item, data, owner)
+	if food == nil then
+		return
+	end
+	local edible = data.edible
+	local hunger, sanity, health, favorite, refused = food.hunger, food.sanity, food.health, food.favorite, food.refused
 	local row = {}
 	local function Add(icon, value, highlight)
 		if math.abs(value) >= .05 then
@@ -909,28 +927,36 @@ local function AddFoodRows(rows, item, data, owner)
 	end
 end
 
-local function AddPerishRows(rows, item, data, holder)
-	if CFG.perish_display == 3 or data.perishable == nil then
-		return
+-- Freshness (0-1), time until stale (nil once stale) and time until rotten
+local function ComputePerish(item, data, holder)
+	if data.perishable == nil then
+		return nil
 	end
-
 	local perishtime = data.perishable.perishtime
 	local modifier = Stats.GetPerishModifier(item, holder)
 	local percent = GetPerishPercent(item, modifier / perishtime)
 	if percent == nil then
-		return
+		return nil
 	end
-
 	local function TimeUntil(target)
 		if modifier <= 0 then
 			return math.huge
 		end
 		return math.max(0, (percent - target) * perishtime / modifier)
 	end
+	return percent, percent > TUNING.PERISH_FRESH and TimeUntil(TUNING.PERISH_FRESH) or nil, TimeUntil(0)
+end
+
+local function AddPerishRows(rows, item, data, holder)
+	if CFG.perish_display == 3 then
+		return
+	end
+	local percent, stale_time, rot_time = ComputePerish(item, data, holder)
+	if percent == nil then
+		return
+	end
 
 	local row = { Cell(ICONS.freshness, FormatPercent(percent)) }
-	local stale_time = percent > TUNING.PERISH_FRESH and TimeUntil(TUNING.PERISH_FRESH) or nil
-	local rot_time = TimeUntil(0)
 
 	-- Stale timers only make sense for food
 	if data.edible == nil or CFG.perish_display == 0 then
@@ -950,7 +976,7 @@ local function AddPerishRows(rows, item, data, holder)
 	table.insert(rows, row)
 end
 
-local function AddWeaponRow(rows, item, data, owner)
+local function AddWeaponRow(rows, item, data, owner, compact)
 	if data.weapon == nil or not CanPlayerEquip(item, owner) then
 		return
 	end
@@ -994,15 +1020,23 @@ local function AddWeaponRow(rows, item, data, owner)
 		vs[tag] = (vs[tag] or 1) * mult
 		from_skill[tag] = true
 	end
-	for _, tag in ipairs({ "lunar_aligned", "shadow_aligned" }) do
-		local mult = vs[tag]
-		if mult ~= nil and mult > 1.0005 then
-			table.insert(row, Cell(ALIGNMENT_ICONS[tag], "+"..FormatPercent(mult - 1), from_skill[tag] and COLOUR_BONUS or nil))
-		end
-	end
-
 	if #row > 0 then
 		table.insert(rows, row)
+	end
+
+	-- Bonuses against lunar / shadow creatures on their own row, so the damage row stays short.
+	-- Left out of the compact equipped panel.
+	if not compact then
+		local vs_row = {}
+		for _, tag in ipairs({ "lunar_aligned", "shadow_aligned" }) do
+			local mult = vs[tag]
+			if mult ~= nil and mult > 1.0005 then
+				table.insert(vs_row, Cell(ALIGNMENT_ICONS[tag], "+"..FormatPercent(mult - 1), from_skill[tag] and COLOUR_BONUS or nil))
+			end
+		end
+		if #vs_row > 0 then
+			table.insert(rows, vs_row)
+		end
 	end
 end
 
@@ -1105,7 +1139,7 @@ local function GetHeatrockRange(item)
 	end
 end
 
-local function AddDurabilityRows(rows, item, data, owner)
+local function AddDurabilityRows(rows, item, data)
 	local percent = GetPercentUsed(item)
 
 	if data.finiteuses ~= nil and percent ~= nil then
@@ -1126,8 +1160,19 @@ local function AddDurabilityRows(rows, item, data, owner)
 		if data.fueled.uses ~= nil then
 			local row = { Cell(ICONS.uses, string.format("%d/%d", math.floor(data.fueled.uses * percent + .5), data.fueled.uses), DurabilityColour(percent)) }
 			if item.prefab == "heatrock" then
-				local range = GetHeatrockRange(item)
-				if range ~= nil and HEATROCK_RANGES[range] ~= nil then
+				-- Clients only get the 5 step range (prefabs/heatrock.lua swaps the networked inventory image,
+				-- thresholds are relative to the surroundings). Hosts can read the exact temperature.
+				local range = GetHeatrockRange(item) or item.currentTempRange
+				local temperature = nil
+				local component = item.components ~= nil and item.components.temperature or nil
+				if component ~= nil then
+					local ok, value = pcall(component.GetCurrent, component)
+					temperature = ok and type(value) == "number" and value or nil
+				end
+				if temperature ~= nil then
+					local icon = (range ~= nil and range <= 2) and ICONS.cold or ICONS.heat
+					table.insert(row, Cell(icon, string.format("%d°", math.floor(temperature + .5))))
+				elseif range ~= nil and HEATROCK_RANGES[range] ~= nil then
 					table.insert(row, Cell(HEATROCK_RANGES[range], TEXT.heatrock[range]))
 				end
 			end
@@ -1153,7 +1198,7 @@ local function AddPlacedHealthRow(rows, data)
 	end
 end
 
-local function AddHealerRow(rows, item, data, owner)
+local function AddHealerRow(rows, data)
 	if data.healer ~= nil then
 		table.insert(rows, { Cell(ICONS.health, FormatSigned(data.healer)) })
 	end
@@ -1161,31 +1206,180 @@ end
 
 --------------------------------------------------------------------------
 
-local function BuildRows(item, holder, owner)
+local function BuildRows(item, holder, owner, compact)
 	local rows = {}
 	local data = Cache.Get(item)
 
 	if data ~= nil then
 		if CFG.show_food then
 			AddFoodRows(rows, item, data, owner)
-			AddHealerRow(rows, item, data, owner)
+			AddHealerRow(rows, data)
 		end
 		AddPerishRows(rows, item, data, holder)
 		if CFG.show_combat then
-			AddWeaponRow(rows, item, data, owner)
+			AddWeaponRow(rows, item, data, owner, compact)
 			AddArmorRow(rows, item, data, owner)
 		end
 		if CFG.show_clothing then
 			AddClothingRows(rows, item, data, owner)
 		end
 		if CFG.show_durability then
-			AddDurabilityRows(rows, item, data, owner)
+			AddDurabilityRows(rows, item, data)
 			AddPlacedHealthRow(rows, data)
 		end
 	end
 
 	if CFG.show_prefabname then
 		table.insert(rows, { Cell(ICONS.label, item.prefab) })
+	end
+
+	return rows
+end
+
+--------------------------------------------------------------------------
+-- Classic style: the layout of the original Item Info, with the same numbers.
+-- Rows are listed bottom to top (the view stacks them upward), cells are plain white.
+
+-- Original time format: "45", "02:05", "1:02:05" or "1.5d"
+local function FormatTimeClassic(t)
+	if t == nil or t ~= t then
+		return "?"
+	elseif t == math.huge then
+		return "-"
+	end
+	t = math.max(0, t)
+	if CFG.time_format == 1 then
+		return t == 0 and "0d" or FormatNumber(t / TUNING.TOTAL_DAY_TIME).."d"
+	elseif t == 0 then
+		return "0"
+	end
+	local hours = math.floor(t / 3600)
+	local mins = math.floor(t / 60 - hours * 60)
+	local secs = math.floor(t - hours * 3600 - mins * 60)
+	if hours == 0 and mins == 0 then
+		return string.format("%02d", secs)
+	elseif hours == 0 then
+		return string.format("%02d:%02d", mins, secs)
+	end
+	return string.format("%d:%02d:%02d", hours, mins, secs)
+end
+
+local VS_ICONS = { [ICONS.vs_lunar[2]] = true, [ICONS.vs_shadow[2]] = true }
+
+-- Runs a reworked row builder and returns its cells, without colours
+local function Collect(builder, ...)
+	local rows = {}
+	builder(rows, ...)
+	local cells = {}
+	for _, row in ipairs(rows) do
+		for _, cell in ipairs(row) do
+			cells[#cells + 1] = { atlas = cell.atlas, tex = cell.tex, text = cell.text, icon_size = cell.icon_size }
+		end
+	end
+	return cells
+end
+
+local function Pick(cells, test)
+	local picked = {}
+	for _, cell in ipairs(cells) do
+		if test(cell.tex) then
+			picked[#picked + 1] = cell
+		end
+	end
+	return picked
+end
+
+local function StripPlus(cell)
+	cell.text = cell.text:gsub("^%+", "")
+	return cell
+end
+
+local function BuildRowsClassic(item, holder, owner)
+	local rows = {}
+	local data = Cache.Get(item)
+	local function Add(row)
+		if row ~= nil and #row > 0 then
+			rows[#rows + 1] = row
+		end
+	end
+
+	if data ~= nil then
+		local clothing = CFG.show_clothing and Collect(AddClothingRows, item, data, owner) or {}
+		local durability = CFG.show_durability and Collect(AddDurabilityRows, item, data) or {}
+
+		-- 1. Sanity per minute
+		for _, cell in ipairs(Pick(clothing, function(tex) return tex == ICONS.sanity[2] end)) do
+			Add({ StripPlus(cell) })
+		end
+
+		-- 2. Spoilage: freshness with one decimal; stale time on its own row above (show all)
+		if CFG.perish_display ~= 3 then
+			local percent, stale_time, rot_time = ComputePerish(item, data, holder)
+			if percent ~= nil then
+				local fresh = Cell(ICONS.freshness, FormatNumber(percent * 100).."%")
+				if data.edible == nil or CFG.perish_display == 0 then
+					Add({ fresh, Cell(ICONS.spoiled, FormatTimeClassic(rot_time)) })
+				elseif CFG.perish_display == 1 then
+					Add({ fresh, stale_time ~= nil and Cell(ICONS.stale, FormatTimeClassic(stale_time)) or Cell(ICONS.spoiled, FormatTimeClassic(rot_time)) })
+				else
+					Add({ fresh, Cell(ICONS.spoiled, FormatTimeClassic(rot_time)) })
+					if stale_time ~= nil then
+						Add({ Cell(ICONS.stale, FormatTimeClassic(stale_time)) })
+					end
+				end
+			end
+		end
+
+		-- 3-4. Insulation, waterproofing, (movement speed)
+		for _, test in ipairs({
+			function(tex) return tex == ICONS.insulation_winter[2] or tex == ICONS.insulation_summer[2] end,
+			function(tex) return tex == ICONS.waterproof[2] end,
+			function(tex) return tex == "cane.tex" end,
+		}) do
+			for _, cell in ipairs(Pick(clothing, test)) do
+				Add({ cell })
+			end
+		end
+
+		-- 5. Uses (with the thermal stone's temperature next to it)
+		local uses_row = Pick(durability, function(tex) return tex == ICONS.uses[2] or tex == ICONS.heat[2] or tex == ICONS.cold[2] end)
+		Add(uses_row)
+
+		if CFG.show_combat then
+			-- 6. Damage and planar damage (no "vs" cells in the original)
+			Add(Pick(Collect(AddWeaponRow, item, data, owner), function(tex) return not VS_ICONS[tex] end))
+		end
+
+		-- 7. Fuel / wear time
+		Add(Pick(durability, function(tex) return tex == ICONS.fuel_light[2] or tex == ICONS.fuel_wearable[2] end))
+
+		if CFG.show_combat then
+			-- 8. Armor: absorption, durability, planar defense on one row
+			Add(Pick(Collect(AddArmorRow, item, data, owner), function(tex) return not VS_ICONS[tex] end))
+		end
+
+		if CFG.show_food then
+			-- 9. Healing
+			for _, cell in ipairs(Collect(AddHealerRow, data)) do
+				Add({ StripPlus(cell) })
+			end
+			-- 10. Food (no favorite star in the original), then warming / cooling
+			local food = Collect(AddFoodRows, item, data, owner)
+			Add(Pick(food, function(tex) return tex == ICONS.hunger[2] or tex == ICONS.sanity[2] or tex == ICONS.health[2] end))
+			for _, cell in ipairs(Pick(food, function(tex) return tex == ICONS.heat[2] or tex == ICONS.cold[2] end)) do
+				Add({ cell })
+			end
+		end
+
+		if CFG.show_durability then
+			for _, cell in ipairs(Collect(AddPlacedHealthRow, data)) do
+				Add({ cell })
+			end
+		end
+	end
+
+	if CFG.show_prefabname then
+		Add({ Cell(ICONS.label, item.prefab) })
 	end
 
 	return rows
@@ -1207,12 +1401,13 @@ end
 local reported_errors = {}
 
 -- Returns rows, signature. Never throws: a broken item just shows nothing.
-function Stats.GetRows(item, holder, owner)
+-- compact: for the equipped panel (leaves out the "vs lunar / shadow" row)
+function Stats.GetRows(item, holder, owner, compact)
 	if item == nil or not item:IsValid() or item.replica.inventoryitem == nil or owner == nil then
 		return {}, ""
 	end
 
-	local ok, rows = pcall(BuildRows, item, holder, owner)
+	local ok, rows = pcall(CFG.ui_style == "classic" and BuildRowsClassic or BuildRows, item, holder, owner, compact)
 	if not ok then
 		if not reported_errors[item.prefab] then
 			reported_errors[item.prefab] = true

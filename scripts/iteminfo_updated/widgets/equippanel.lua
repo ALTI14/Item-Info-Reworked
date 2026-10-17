@@ -4,6 +4,7 @@
 
 local Widget = require "widgets/widget"
 local Image = require "widgets/image"
+local NineSlice = require "widgets/nineslice"
 local StatsView = require "iteminfo_updated/widgets/statsview"
 local Stats = require "iteminfo_updated/stats"
 
@@ -12,9 +13,12 @@ local CFG = IIU.config
 
 local REFRESH_TIME = .2
 local ICON_SIZE = 64
-local ICON_GAP = 12
-local BLOCK_PADDING = 10
-local BLOCK_SPACING = 12
+local CLASSIC = CFG.ui_style == "classic"
+-- Classic uses the original panel's geometry (widgets/iteminfo_equip.lua: ImageSpacing 20, no padding;
+-- iteminfo_equip_manager.lua: EQUIP_SPACING 10)
+local ICON_GAP = CLASSIC and 20 or 12
+local BLOCK_PADDING = CLASSIC and 0 or 6
+local BLOCK_SPACING = CLASSIC and 10 or 12
 local BACKPACK_CLEARANCE = 230 -- width of the side backpack widget, in HUD units
 
 --------------------------------------------------------------------------
@@ -26,11 +30,12 @@ local EquipBlock = Class(Widget, function(self, equipslot, owner)
 	self:SetClickable(false)
 
 	if CFG.equip_background > 0 then
-		self.bg = self:AddChild(Image("images/global.xml", "square.tex"))
-		self.bg:SetTint(0, 0, 0, CFG.equip_background)
+		-- Same framed panel as the tooltip (15px corners sit outside the NineSlice centre)
+		self.bg = self:AddChild(NineSlice("images/iteminfo_panel.xml"))
+		self.bg:SetTint(1, 1, 1, math.min(1, CFG.equip_background / .45))
 	end
 	self.icon = self:AddChild(Image())
-	self.view = self:AddChild(StatsView(0))
+	self.view = self:AddChild(StatsView(0, CFG.ui_style))
 
 	self.item = nil
 	self.image = nil
@@ -57,7 +62,7 @@ function EquipBlock:Layout()
 	self.icon:SetPosition(left + ICON_SIZE / 2, 0)
 	self.view:SetPosition(left + ICON_SIZE + ICON_GAP + view_w / 2, 0)
 	if self.bg ~= nil then
-		self.bg:SetSize(self.width, self.height)
+		self.bg:SetSize(math.max(1, self.width - 30), math.max(1, self.height - 30))
 	end
 end
 
@@ -65,14 +70,18 @@ end
 function EquipBlock:Refresh()
 	local inventory = self.owner.replica.inventory
 	local item = inventory ~= nil and inventory:GetEquippedItem(self.equipslot) or nil
+	if item ~= nil and (not item:IsValid() or item.replica.inventoryitem == nil) then
+		item = nil
+	end
 
 	local rows, signature = nil, ""
 	if item ~= nil then
-		rows, signature = Stats.GetRows(item, self.owner, self.owner)
+		rows, signature = Stats.GetRows(item, self.owner, self.owner, true)
 	end
 
 	-- Nothing to show: hide and forget everything, so re-equipping the same item rebuilds it
-	if item == nil or #rows == 0 then
+	-- The original panel showed every equipped item, even without stats (e.g. a backpack)
+	if item == nil or (#rows == 0 and not CLASSIC) then
 		local was_shown = self.shown
 		self.item = nil
 		self.image = nil
@@ -165,8 +174,18 @@ function ItemInfoEquipPanel:Layout()
 	for _, block in ipairs(self.blocks) do
 		if block.shown then
 			local w, h = block:GetSize()
-			block:SetPosition(-w / 2, y + h / 2)
-			y = y + h + BLOCK_SPACING
+			if CLASSIC then
+				-- Exactly the original stacking (iteminfo_equip_manager.lua OnUpdate + iteminfo_equip.lua
+				-- UpdateChildrenPos, which offset the content by the block position a second time):
+				-- centered on the margin point, content centre at 2 * (y + h/2 * scale), y += h/2 + spacing * scale
+				local scale = CFG.equip_scale
+				block:SetPosition(0, 2 * (y + h / 2 * scale))
+				y = y + h / 2 + BLOCK_SPACING * scale
+			else
+				-- Right aligned to the margin, stacked upward
+				block:SetPosition(-w / 2, y + h / 2)
+				y = y + h + BLOCK_SPACING
+			end
 		end
 	end
 end

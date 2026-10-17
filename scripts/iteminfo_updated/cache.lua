@@ -433,7 +433,6 @@ local function Build(item)
 			data.weapon = proj.weapon
 			data.planardamage = proj.planardamage or data.planardamage
 			data.damagetypebonus = proj.damagetypebonus or data.damagetypebonus
-			data.is_ammo = true
 		end
 	end
 

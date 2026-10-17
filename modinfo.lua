@@ -8,29 +8,9 @@ local function T(en, zh)
 end
 
 name = T("Item Info Reworked", "物品信息 重制版 (Item Info Reworked)")
-description = T([[Version 2.0.0
-
-Displays detailed item statistics when hovering over inventory, equipment and container slots, together with a compact panel summarizing your equipped gear.
-
-• Food: hunger, sanity and health calculated for your character, accounting for freshness, spices, favorite foods and dietary restrictions.
-• Spoilage: freshness and time until stale and rotten, adjusted for containers, frozen items, wetness and season.
-• Combat: damage including character multipliers, set bonuses and skill tree perks, planar damage and defense, and bonuses against lunar and shadow creatures.
-• Clothing: sanity per minute, movement speed, insulation and waterproofing.
-• Durability: remaining uses, fuel and wear time, and the health of placeable structures such as walls, bumpers and boats.
-
-Client-side only and compatible with any server. Fully configurable, including an optional hotkey to toggle the display (set it under "Toggle key" in the mod settings).]], [[版本 2.0.0
-
-鼠标悬停在物品栏、装备栏和容器格子上时显示详细的物品属性，并以简洁的面板汇总你当前的装备。
-
-• 食物：根据你的角色计算饥饿、理智与生命值，考虑新鲜度、调味料、最爱食物及饮食限制。
-• 腐烂：新鲜度、变质及腐烂时间，并根据容器、冷冻物品、潮湿状态和季节进行调整。
-• 战斗：包含角色倍率、套装加成与技能树加成的伤害，位面伤害与位面防御，以及对月亮/暗影生物的额外伤害。
-• 衣物：每分钟理智、移动速度、保暖/隔热及防水。
-• 耐久：剩余次数、燃料与穿戴时间，以及墙、保险杠和船等可放置建筑的生命值。
-
-纯客户端模组，兼容任何服务器。所有选项均可配置，并可在模组设置的“开关快捷键”中设置用于开关显示的按键。]])
+description = T("Made by Alti", "由 Alti 制作")
 author = "Alti"
-version = "2.0.0"
+version = "2.0.3"
 icon_atlas = "item_info.xml"
 icon = "item_info.tex"
 forumthread = ""
@@ -117,6 +97,18 @@ configuration_options =
 {
 	Header("Tooltip", "悬停信息"),
 	{
+		name = "UI_STYLE",
+		label = T("UI style", "界面风格"),
+		hover = T("Reworked: the new look. Classic: the look of the original mod (centered rows, smaller icons, no backgrounds).",
+			"重制版：新的外观。经典：原版模组的外观（居中排列、较小图标、无背景）。"),
+		options =
+		{
+			{ description = T("Reworked", "重制版"), data = "reworked" },
+			{ description = T("Classic", "经典（旧版）"), data = "classic" },
+		},
+		default = "reworked",
+	},
+	{
 		name = "INFO_SCALE",
 		label = T("Tooltip scale", "信息大小"),
 		hover = T("Size of the info shown above hovered items.", "悬停物品时显示的信息大小。"),
@@ -139,6 +131,23 @@ configuration_options =
 	},
 	YesNo("CONTAINER_TOOLTIPS", T("Chest tooltips", "容器内物品信息"),
 		T("Show the tooltip for items in chests, iceboxes and other containers.", "显示箱子、冰箱等容器中物品的信息。"), true),
+	{
+		name = "CONTROLLER_TOOLTIP",
+		label = T("Controller tooltip", "手柄物品信息"),
+		hover = T("With a controller: when to show the selected item's tooltip while the inventory is closed (you can keep moving).",
+			"使用手柄时：物品栏关闭时（可以继续移动）何时显示所选物品的信息。"),
+		options =
+		{
+			{ description = T("Always", "始终显示"), data = "always",
+				hover = T("Always show the selected slot's info, like the original mod.", "始终显示所选格子的信息，与原版模组相同。") },
+			{ description = T("With item name", "随物品名称"), data = "name",
+				hover = T("Show it while the game shows the selected item's name (about 10 seconds after selecting it).",
+					"在游戏显示所选物品名称时显示（选择后约 10 秒）。") },
+			{ description = T("Inventory open", "仅物品栏打开时"), data = "open",
+				hover = T("Only show it while the inventory is open.", "仅在打开物品栏时显示。") },
+		},
+		default = "always",
+	},
 
 	Header("Shown info", "显示内容"),
 	YesNo("SHOW_FOOD", T("Food", "食物"),
