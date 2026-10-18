@@ -22,13 +22,19 @@ Values provided by set bonuses and skills are shown in green; low durability (20
 
 ## What's new in 2.0.4
 
-- **Controller:** the tooltip is shown for the selected slot while the inventory is closed again, so items can be checked while moving, as in the original mod. A new *Controller tooltip* setting chooses between always, only while the item name is shown, or only with the inventory open.
-- **Classic UI style:** an optional style that reproduces the look of the original Item Info (centered rows, smaller icons, no backgrounds).
-- **Reworked style:** tooltips now use a framed panel and sit closer to the item name; bonuses against lunar and shadow creatures have their own row, and the equipped items panel is less cluttered.
 - **Thermal Stone:** its temperature is shown for every player, not only the host: exact once it changes colour, otherwise the range it is in. A countdown shows how long until it turns grey and stops warming or cooling you, or until its next colour while it charges. It follows nearby fires and other heat sources, the day and night cycle, new days and seasons, the caves and the fumarole area, ice boxes and closed containers.
 - **Walter:** dreadstone and horror fuel ammo show the bonus from a Void-handle slingshot worn with the Void Cowl.
 - **Game updates:** more of the numbers are read from the game itself, so balance changes are followed automatically. If an update breaks one line of a tooltip, only that line is left out instead of the whole tooltip.
+
+## What's new in 2.0.3
+
+- **Controller:** the tooltip is shown for the selected slot while the inventory is closed again, so items can be checked while moving, as in the original mod. A new *Controller tooltip* setting chooses between always, only while the item name is shown, or only with the inventory open.
 - **Hosts:** exact spoilage is read from the game.
+
+## What's new in 2.0.2
+
+- **Classic UI style:** an optional style that reproduces the look of the original Item Info (centered rows, smaller icons, no backgrounds).
+- **Reworked style:** tooltips now use a framed panel and sit closer to the item name; bonuses against lunar and shadow creatures have their own row, and the equipped items panel is less cluttered.
 
 ## What's new in 2.0.0
 
