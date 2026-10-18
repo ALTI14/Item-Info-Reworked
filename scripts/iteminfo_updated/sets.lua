@@ -47,13 +47,61 @@ Sets.RESIST =
 	voidcloth = { tag = "shadow_aligned", mult = "ARMOR_VOIDCLOTH_SETBONUS_SHADOW_RESIST" },
 }
 
+-- Walter's slingshot with the Void handle (prefabs/slingshotpart_defs.lua slingshot_handle_voidcloth), while
+-- its owner wears the Void Cowl: the dreadstone and horror fuel ammo it fires get the voidcloth weapon bonus
+-- (slingshot.lua OnProjectileLaunched -> slingshotammo.lua SetVoidBonus)
+local VOID_HANDLE_AMMO =
+{
+	slingshotammo_dreadstone = VOIDCLOTH_WEAPON,
+	slingshotammo_horrorfuel = VOIDCLOTH_WEAPON,
+}
+local VOID_HANDLE = "slingshot_handle_voidcloth"
+
 local function GetEquipped(owner, slot)
 	local inventory = owner.replica.inventory
 	return inventory ~= nil and slot ~= nil and inventory:GetEquippedItem(slot) or nil
 end
 
--- Returns the weapon's bonus definition when the matching hat is worn
+-- slingshot.lua sends the handle as its index among the handle parts, in pairs order over the part
+-- definitions (the client decodes it the same way for the slingshot's icon)
+local part_defs = nil
+local function GetSlingshotHandle(slingshot)
+	if part_defs == nil then
+		local ok, defs = pcall(require, "prefabs/slingshotpart_defs")
+		part_defs = ok and type(defs) == "table" and defs or false
+	end
+	local id = slingshot.handleid ~= nil and slingshot.handleid:value() or 0
+	if not part_defs or type(id) ~= "number" or id <= 0 then
+		return nil
+	end
+	local index = 0
+	for name, def in pairs(part_defs) do
+		if type(def) == "table" and def.slot == "handle" then
+			index = index + 1
+			if index == id then
+				return name
+			end
+		end
+	end
+end
+
+local function HasVoidHandleBonus(owner)
+	local slingshot = GetEquipped(owner, EQUIPSLOTS.HANDS)
+	if slingshot == nil or not slingshot:HasTag("slingshot") then
+		return false
+	elseif slingshot.components ~= nil and slingshot.components.slingshotmods ~= nil then
+		return slingshot.voidbonusenabled == true -- hosts: the slingshot's own flag
+	end
+	local hat = GetEquipped(owner, EQUIPSLOTS.HEAD)
+	return hat ~= nil and hat.prefab == "voidclothhat" and GetSlingshotHandle(slingshot) == VOID_HANDLE
+end
+
+-- Returns the weapon's (or slingshot ammo's) bonus definition when it applies
 function Sets.GetWeaponBonus(owner, item)
+	local ammo = VOID_HANDLE_AMMO[item.prefab]
+	if ammo ~= nil then
+		return HasVoidHandleBonus(owner) and ammo or nil
+	end
 	local def = Sets.WEAPONS[item.prefab]
 	if def == nil then
 		return nil

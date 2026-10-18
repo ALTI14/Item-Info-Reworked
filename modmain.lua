@@ -112,6 +112,7 @@ Assets =
 
 local ItemInfoTooltip = _G.require("iteminfo_updated/widgets/tooltip")
 local ItemInfoEquipPanel = _G.require("iteminfo_updated/widgets/equippanel")
+local Heatrock = _G.require("iteminfo_updated/heatrock/tracker")
 
 --------------------------------------------------------------------------
 -- HUD
@@ -122,10 +123,27 @@ AddClassPostConstruct("widgets/controls", function(controls)
 	local ok, err = _G.pcall(function()
 		controls.iteminfo_equippanel = controls.bottomright_root:AddChild(ItemInfoEquipPanel(controls))
 		controls.iteminfo_tooltip = controls:AddChild(ItemInfoTooltip(controls))
+		-- Thermal Stone temperatures are followed in the background (shown with the durability info)
+		if _G.ITEMINFO_UPDATED.config.show_durability then
+			Heatrock.Start(controls.owner)
+		end
 	end)
 	if not ok then
 		print("[Item Info Reworked] Could not create the HUD widgets: "..tostring(err))
 	end
+end)
+
+-- The Thermal Stone's light shows how hot it is in its hottest band (see heatrock/tracker.lua)
+AddPrefabPostInit("heatrocklight", function(inst)
+	Heatrock.RegisterLight(inst)
+end)
+-- A fire's light radius tells the two biggest wildfire sizes apart
+AddPrefabPostInit("firefx_light", function(inst)
+	Heatrock.RegisterFireLight(inst)
+end)
+-- An active sentry ward's ice circle sets stones lying in it to -2
+AddPrefabPostInit("deerclopseyeball_sentryward_fx", function(inst)
+	Heatrock.RegisterIceCircle(inst)
 end)
 
 --------------------------------------------------------------------------

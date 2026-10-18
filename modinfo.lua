@@ -170,7 +170,7 @@ configuration_options =
 	YesNo("SHOW_CLOTHING", T("Clothing", "衣物"),
 		T("Sanity per minute, movement speed, insulation and waterproofing.", "每分钟理智、移动速度、保暖/隔热和防水。"), true),
 	YesNo("SHOW_DURABILITY", T("Durability", "耐久"),
-		T("Uses left and fuel / wear time.", "剩余使用次数和燃料/穿戴时间。"), true),
+		T("Uses left, fuel / wear time and Thermal Stone temperature.", "剩余使用次数、燃料/穿戴时间和暖石温度。"), true),
 	YesNo("SHOW_REFUSED_FOOD", T("Food you refuse", "拒绝的食物"),
 		T("Also show (greyed out) stats of food your character refuses, like meat for Wurt or veggies for Wigfrid.", "同时以灰色显示角色拒绝食用的食物属性，例如沃特的肉类或薇格弗德的蔬菜。"), false),
 	{
