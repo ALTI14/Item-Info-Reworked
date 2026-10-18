@@ -20,7 +20,7 @@ Version 2.0.0 is a complete rework: every script has been rewritten against the 
 
 Values provided by set bonuses and skills are shown in green; low durability (20% or less) is shown in red.
 
-## What's new in 2.0.3
+## What's new in 2.0.4
 
 - **Controller:** the tooltip is shown for the selected slot while the inventory is closed again, so items can be checked while moving, as in the original mod. A new *Controller tooltip* setting chooses between always, only while the item name is shown, or only with the inventory open.
 - **Classic UI style:** an optional style that reproduces the look of the original Item Info (centered rows, smaller icons, no backgrounds).

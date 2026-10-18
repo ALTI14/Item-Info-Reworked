@@ -10,7 +10,7 @@ end
 name = T("Item Info Reworked", "物品信息 重制版 (Item Info Reworked)")
 description = T("Made by Alti", "由 Alti 制作")
 author = "Alti"
-version = "2.0.3"
+version = "2.0.4"
 icon_atlas = "item_info.xml"
 icon = "item_info.tex"
 forumthread = ""
